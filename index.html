@@ -149,6 +149,11 @@
     loading.classList.remove('active');
     vid.style.display      = 'block';
     closeBtn.style.display = 'block';
+    if (gen > 0) {
+      // Browsers block autoplay-with-sound in windows opened via script
+      // (no direct user gesture inside them), so child windows autoplay muted.
+      vid.muted = true;
+    }
     vid.play().catch(() => {});
 
     let spawned = false;
@@ -162,8 +167,13 @@
 
   function startSequence() {
     ui.style.display = 'none';
-    loading.classList.add('active');
-    setTimeout(playThenSpawn, DELAY_MS);
+    if (gen === 0) {
+      loading.classList.add('active');
+      setTimeout(playThenSpawn, DELAY_MS);
+    } else {
+      // Child windows: no loading screen, go straight to the video.
+      setTimeout(playThenSpawn, DELAY_MS);
+    }
   }
 
   closeBtn.onclick = () => window.close();
