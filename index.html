@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bobby Ware</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #0b1530;
+    color: #fff;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  #ui {
+    max-width: 420px;
+    padding: 24px;
+  }
+  h1 {
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  p {
+    color: #b9c2dd;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  button {
+    background: #3b6cf0;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 22px;
+    font-size: 15px;
+    margin: 8px 6px 0;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: #33406b;
+    cursor: not-allowed;
+  }
+  button:hover:not(:disabled) {
+    background: #2f5adf;
+  }
+  video {
+    max-width: 100%;
+    max-height: 100vh;
+    display: none;
+  }
+  #closeBtn {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    background: #ff4d4f;
+    display: none;
+  }
+  #loading {
+    display: none;
+  }
+  #loading img {
+    width: 220px;
+    max-width: 70vw;
+    animation: spin 1.4s linear infinite;
+  }
+  #loading p {
+    margin-top: 16px;
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <h1>Bobby Ware</h1>
+  <p id="status">
+    Step 1: click "Enable Popups" (this lets the browser grant permission
+    for this page to open new windows).<br><br>
+    Step 2: click "Start" to begin.
+  </p>
+  <button id="enableBtn">Enable Popups</button>
+  <button id="startBtn" disabled>Start</button>
+</div>
+
+<div id="loading">
+  <img src="loading.png" alt="Loading">
+  <p>Loading...</p>
+</div>
+
+<video id="vid" src="video.mp4" playsinline></video>
+<button id="closeBtn">Close this window</button>
+
+<script>
+  const params   = new URLSearchParams(location.search);
+  const gen      = parseInt(params.get('gen') || '0', 10);
+  const CHILDREN = 2;          // how many popups each video spawns
+  const DELAY_MS = 3000;       // wait time before playback starts
+  const MAX_GEN  = 12;         // safety cap so it can't literally crash your PC forever; raise/remove if you really want infinite
+
+  const vid       = document.getElementById('vid');
+  const ui        = document.getElementById('ui');
+  const loading   = document.getElementById('loading');
+  const closeBtn  = document.getElementById('closeBtn');
+
+  document.title = gen === 0 ? 'Bobby Ware' : 'Bobby Ware #' + gen;
+
+  function spawnChildren() {
+    if (gen >= MAX_GEN) return;
+    const nextGen = gen + 1;
+    for (let i = 0; i < CHILDREN; i++) {
+      window.open(
+        `index.html?gen=${nextGen}`,
+        '_blank',
+        'width=480,height=360,left=' + Math.floor(Math.random() * 400) +
+        ',top=' + Math.floor(Math.random() * 300)
+      );
+    }
+  }
+
+  function playThenSpawn() {
+    loading.style.display  = 'none';
+    vid.style.display      = 'block';
+    closeBtn.style.display = 'block';
+    vid.play().catch(() => {});
+    vid.onended = spawnChildren;
+  }
+
+  function startSequence() {
+    ui.style.display      = 'none';
+    loading.style.display = 'block';
+    setTimeout(playThenSpawn, DELAY_MS);
+  }
+
+  closeBtn.onclick = () => window.close();
+
+  if (gen === 0) {
+    // Root window: require the user to grant popup permission, then Start.
+    document.getElementById('enableBtn').onclick = () => {
+      const test = window.open('', '_blank', 'width=50,height=50');
+      if (test) {
+        test.close();
+        document.getElementById('status').textContent =
+          'Popups are enabled. Press Start to begin.';
+        document.getElementById('startBtn').disabled = false;
+      } else {
+        document.getElementById('status').textContent =
+          'Your browser blocked the popup. Please allow popups for this site ' +
+          '(usually a small icon in the address bar), then click "Enable Popups" again.';
+      }
+    };
+    document.getElementById('startBtn').onclick = startSequence;
+  } else {
+    // Child windows: skip the UI and start automatically.
+    ui.style.display = 'none';
+    startSequence();
+  }
+</script>
+
+</body>
+</html>
